@@ -63,9 +63,64 @@ def createVert(context,
 def createParamLadder(context,
         width   =0.28,
         step    =0.3,
-        gauge   =0.0254,
-        height  = 2
+        steps   =10,
+        thickness   =0.0254,
+        height  = 2,
+        meshName= "genLadder",
+        obname  = "Ladder"
         ):
+    mesh = bpy.data.meshes.new(meshName)
+    
+
+    # create one vert mesh
+    bm = bmesh.new()
+    vertone = bm.verts.new((0,0,0))
+    #verttwo = bm.verts.new((0,0,height))
+    #edge = bm.edges.new([vertone,verttwo])
+    bm.to_mesh(mesh)
+    ob = bpy.data.objects.new( obname, mesh) 
+    context.collection.objects.link(ob)
+
+    # set width
+    mod = ob.modifiers.new(name="ladderWidth", type='SCREW')
+    mod.angle = 0
+    mod.screw_offset = width
+    mod.steps = 1
+    mod.render_steps = 1
+    mod.axis = 'X'
+    mod.use_merge_vertices = True
+
+    # step/height
+    mod = ob.modifiers.new(name="ladderStep", type='SCREW')
+    mod.angle = 0
+    mod.screw_offset = step
+    mod.axis = 'Z'
+    mod.steps = 1
+    mod.render_steps = 1
+    mod.iterations = steps
+    mod.use_merge_vertices = True
+
+
+    # thickness
+    mod = ob.modifiers.new(name="Wireframe", type='WIREFRAME')
+    mod.thickness = thickness
+    mod.show_in_editmode = True
+
+    # make solid
+    mod = ob.modifiers.new(name="Solid", type='SOLIDIFY')
+    mod.thickness = thickness*0.6
+
+    # weld
+    mod = ob.modifiers.new(name="Weld", type='WELD')
+    mod.merge_threshold = thickness/2
+
+    # auto smooth
+    ob.data.use_auto_smooth = True
+
+
+    # To 3D cursor
+    ob.location = context.scene.cursor.location    
+
 
     return (ob)
 
@@ -78,10 +133,8 @@ def createTruss(context,
 
           ):
               
-
+    # create two vert/one edge mesh
     mesh = bpy.data.meshes.new(meshName)
-    
-
     
     bm = bmesh.new()
     vertone = bm.verts.new((0,0,0))
@@ -99,6 +152,7 @@ def createTruss(context,
     mod.show_in_editmode = True
     #ob.data.skin_vertices[0].radius = (0.5,0.5)
     
+    # To 3D cursor
     ob.location = context.scene.cursor.location    
     return (ob)
 
@@ -184,6 +238,7 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
         pcoll = preview_collections["main"]
         truss_icon = pcoll["truss_icon"]
         railing_icon = pcoll["railing_icon"]
+        ladder_icon = pcoll["ladder_icon"]
 
         C = context
 
@@ -207,15 +262,27 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
             if ob.modifiers['decoPatterns']:
                 layout.label(text="Railing properties", icon_value=railing_icon.icon_id)
             layout.prop(ob.modifiers['decoPatterns'], "width_pct", text="Deco pattern")
-            layout.prop(ob.modifiers['decoPatterns'], "segments", text="Pattern complexity")
+            layout.prop(ob.modifiers['decoPatterns'], "segments", text="Pattern steps")
             layout.prop(ob.modifiers['Wireframe'], "thickness", text="Beam thickness")
         except:
             layout.operator( "gen.myop_createrailing", icon_value=railing_icon.icon_id)
             print("no deco :-(")
+
+        # ladder
+        try:
+            if ob.modifiers['ladderWidth']:
+                layout.label(text="Ladder properties", icon_value=ladder_icon.icon_id)
+                layout.prop(ob.modifiers['ladderWidth'], "screw_offset", text="Width")
+                layout.prop(ob.modifiers['ladderStep'], "screw_offset", text="Step height")
+                layout.prop(ob.modifiers['ladderStep'], "iterations", text="Steps")
+                layout.prop(ob.modifiers['Wireframe'], "thickness", text="Thickness")
+        except:
+            layout.operator("gen.myop_createladder", icon_value=ladder_icon.icon_id)
+
         
 class GEN_OT_new_truss(bpy.types.Operator):
-    """Creates a parametric trussed tower"""
-    bl_label = "Create truss tower"
+    """Adds a parametric low poly trussed tower"""
+    bl_label = "Add truss tower"
     bl_idname = "gen.myop_createtruss"
     
     
@@ -231,8 +298,8 @@ class GEN_OT_new_truss(bpy.types.Operator):
         return {'FINISHED'}
     
 class GEN_OT_new_railing(bpy.types.Operator):
-    """Creates a parametric railing"""
-    bl_label = "Create railing"
+    """Converts active object into a parametric railing"""
+    bl_label = "Convert to railing"
     bl_idname = "gen.myop_createrailing"
     
     def execute(self, context):
@@ -240,10 +307,21 @@ class GEN_OT_new_railing(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class GEN_OT_new_ladder(bpy.types.Operator):
+    """Adds a parametric ladder. Early alpha stage."""
+    bl_label = "Add ladder (alpha)"
+    bl_idname = "gen.myop_createladder"
+    
+    def execute(self, context):
+        createParamLadder(context)
+        
+        return {'FINISHED'}
+
+
 #÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                                                    REGISTER
 
-classes = [GENCHARTS_PT_main_panel, GEN_OT_new_truss, GEN_OT_new_railing]
+classes = [GENCHARTS_PT_main_panel, GEN_OT_new_truss, GEN_OT_new_railing, GEN_OT_new_ladder]
  
 preview_collections = {}
  
@@ -258,6 +336,7 @@ def register():
     # load a preview thumbnail of a file and store in the previews collection
     pcoll.load("truss_icon", os.path.join(my_icons_dir, "icons_truss.png"), 'IMAGE')
     pcoll.load("railing_icon", os.path.join(my_icons_dir, "icons_railing.png"), 'IMAGE')
+    pcoll.load("ladder_icon", os.path.join(my_icons_dir, "icons_ladder.png"), 'IMAGE')
 
     preview_collections["main"] = pcoll
 
