@@ -129,20 +129,24 @@ def createTruss(context,
         height      =  10, # height of the column
         thickness   =  .0254, # thickness, 1 inch default, metric
         meshName    = "Truss",
-        obname      = "Truss"
+        obname      = "Truss",
+        makenew     = True
 
           ):
-              
-    # create two vert/one edge mesh
-    mesh = bpy.data.meshes.new(meshName)
     
-    bm = bmesh.new()
-    vertone = bm.verts.new((0,0,0))
-    verttwo = bm.verts.new((0,0,height))
-    edge = bm.edges.new([vertone,verttwo])
-    bm.to_mesh(mesh)
-    ob = bpy.data.objects.new( obname, mesh) 
-    context.collection.objects.link(ob)
+    if makenew:   
+        # create two vert/one edge mesh
+        mesh = bpy.data.meshes.new(meshName)
+        
+        bm = bmesh.new()
+        vertone = bm.verts.new((0,0,0))
+        verttwo = bm.verts.new((0,0,height))
+        edge = bm.edges.new([vertone,verttwo])
+        bm.to_mesh(mesh)
+        ob = bpy.data.objects.new( obname, mesh) 
+        context.collection.objects.link(ob)
+    else:
+        ob = context.active_object
     
     mod = ob.modifiers.new(name="Skin", type='SKIN')
     mod = ob.modifiers.new(name="Triangulate", type='TRIANGULATE')
@@ -281,10 +285,12 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
         
         #row = layout.row() 
         layout.operator("gen.myop_createtruss", icon_value=truss_icon.icon_id)
-        try:
-            layout.prop(ob.modifiers['trussWireframe'], "thickness", text="Beam thickness")
-        except:
-            print("no truss :-(")
+        if context.active_object:
+            try:
+                layout.prop(ob.modifiers['trussWireframe'], "thickness", text="Beam thickness")
+            except:
+                layout.operator("gen.myop_convert2truss", icon_value=truss_icon.icon_id)
+            
 
         
 
@@ -331,6 +337,23 @@ class GEN_OT_new_truss(bpy.types.Operator):
         createTruss(context)
         
         return {'FINISHED'}
+
+class GEN_OT_convert_to_truss(bpy.types.Operator):
+    """Convert mesh into trussed tower"""
+    bl_label = "Convert to truss"
+    bl_idname = "gen.myop_convert2truss"
+    
+    
+    
+    def execute(self, context):
+        
+        
+        #ob["gen_chartdata"] = bpy.types.Object.gen_chartprops()
+        #ob["gen_chart_datalist"] = (45,45,90,180)
+        #ob["gen_chart_labellist"] = ("perros", "gatos", "canarios", "elefantes")
+        createTruss(context, makenew = False)
+        
+        return {'FINISHED'}
     
 class GEN_OT_new_railing(bpy.types.Operator):
     """Converts active object into a parametric railing"""
@@ -366,7 +389,14 @@ class GEN_OT_new_ladder(bpy.types.Operator):
 #÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                                                    REGISTER
 
-classes = [GENCHARTS_PT_main_panel, GEN_OT_new_truss, GEN_OT_new_railing, GEN_OT_new_ladder, GEN_OT_update_railing]
+classes = [
+            GENCHARTS_PT_main_panel,
+            GEN_OT_new_truss, 
+            GEN_OT_new_railing,
+            GEN_OT_new_ladder,
+            GEN_OT_update_railing,
+            GEN_OT_convert_to_truss
+            ]
  
 preview_collections = {}
  
