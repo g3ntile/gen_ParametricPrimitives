@@ -2,7 +2,7 @@
 bl_info = {
     "name": "GEN Parametric Primitives",
     "author": "Pablo Gentile",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (2, 80, 0),
     "category": "Object",
     "location": "View3D > Properties panel > Create",
@@ -156,6 +156,28 @@ def createTruss(context,
     ob.location = context.scene.cursor.location    
     return (ob)
 
+def setSkinWidth(ob,x=1,y=1):
+    for v in ob.data.skin_vertices[0].data:
+        v.radius = x,y
+    return (ob)
+
+def updateRailing(ob):
+
+    # update skin data
+    setSkinWidth(ob,0.0001,ob["genRailingHeight"]/2)
+
+    #difference between heights
+    delta = (ob['genRailingHeight'] - ob['genRailingRef'])/2
+
+    # Sets location adjusted to new height
+    ob.location = (
+        ob.location[0],
+        ob.location[1],
+        ob.location[2] + delta)
+    ob['genRailingRef'] = ob['genRailingHeight']
+    return(ob)
+
+
 def createRailing(context,
         height      = .85,
         width       = .025,
@@ -167,25 +189,28 @@ def createRailing(context,
     # if in edit mode, create new object: to do
     
     # SKIN
-    mod = ob.modifiers.new(name="divisions", type='SKIN') 
+    mod = ob.modifiers.new(name="railingDivisions", type='SKIN') 
+    
     # set the relative size of the skin vertices
-    for v in ob.data.skin_vertices[0].data:
-        v.radius = 0.00001, height/4
+    # for v in ob.data.skin_vertices[0].data:
+    #     v.radius = 0.00001, height/2
+    setSkinWidth(ob,0.00001,height/2) 
+
         
     mod = ob.modifiers.new(name="Weld", type='WELD') 
     
     # SUBDIV 
-#    mod = ob.modifiers.new(name="Subd", type='SUBSURF') 
-#    mod.subdivision_type = 'SIMPLE'
-#    mod.levels = 1
-#    mod.render_levels = 1
+    mod = ob.modifiers.new(name="railingSubd", type='SUBSURF') 
+    mod.subdivision_type = 'SIMPLE'
+    mod.levels = 1
+    mod.render_levels = 1
 
     # ARRAY 
-    mod = ob.modifiers.new(name="DOUBLE", type='ARRAY') 
-    mod.use_relative_offset = False
-    mod.use_constant_offset = True
-    mod.constant_offset_displace =(0,0,height/2)
-    mod.use_merge_vertices = True
+    # mod = ob.modifiers.new(name="DOUBLE", type='ARRAY') 
+    # mod.use_relative_offset = False
+    # mod.use_constant_offset = True
+    # mod.constant_offset_displace =(0,0,height/2)
+    # mod.use_merge_vertices = True
 
     # BEVEL: GENERATES INTERESTING PATTERNS
     mod = ob.modifiers.new(name="decoPatterns", type='BEVEL') 
@@ -199,17 +224,22 @@ def createRailing(context,
     mod = ob.modifiers.new(name="Wireframe", type='WIREFRAME')
     mod.thickness = thickness
     mod.show_in_editmode = True
+    mod.offset = -1.0
     
+    # Sets location adjusted to height
     ob.location = (
         ob.location[0],
         ob.location[1],
-        ob.location[2] + height/4)
+        ob.location[2] + height/2)
     if context.mode == 'OBJECT':
         bpy.ops.object.editmode_toggle()
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.object.skin_root_mark()
     if context.mode == 'EDIT_MESH':
         bpy.ops.object.editmode_toggle()
+
+    ob['genRailingHeight'] = height
+    ob['genRailingRef'] = height
 
 
 
@@ -258,12 +288,17 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
 
         
 
+        # RAILINGS
         try:
             if ob.modifiers['decoPatterns']:
                 layout.label(text="Railing properties", icon_value=railing_icon.icon_id)
-            layout.prop(ob.modifiers['decoPatterns'], "width_pct", text="Deco pattern")
-            layout.prop(ob.modifiers['decoPatterns'], "segments", text="Pattern steps")
-            layout.prop(ob.modifiers['Wireframe'], "thickness", text="Beam thickness")
+                
+                layout.prop(ob.modifiers['decoPatterns'], "width_pct", text="Deco pattern")
+                layout.prop(ob.modifiers['decoPatterns'], "segments", text="Pattern steps")
+                layout.prop(ob.modifiers['Wireframe'], "thickness", text="Beam thickness")
+                row = layout.row()  
+                row.prop(ob, '["genRailingHeight"]', text="Height")
+                row.operator( "gen.myop_updaterailing", text=">> update")
         except:
             layout.operator( "gen.myop_createrailing", icon_value=railing_icon.icon_id)
             print("no deco :-(")
@@ -307,6 +342,16 @@ class GEN_OT_new_railing(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class GEN_OT_update_railing(bpy.types.Operator):
+    """updates height of parametric railing"""
+    bl_label = "Update railing"
+    bl_idname = "gen.myop_updaterailing"
+    
+    def execute(self, context):
+        updateRailing(context.active_object)
+        
+        return {'FINISHED'}
+
 class GEN_OT_new_ladder(bpy.types.Operator):
     """Adds a parametric ladder. Early alpha stage."""
     bl_label = "Add ladder (alpha)"
@@ -321,7 +366,7 @@ class GEN_OT_new_ladder(bpy.types.Operator):
 #÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                                                    REGISTER
 
-classes = [GENCHARTS_PT_main_panel, GEN_OT_new_truss, GEN_OT_new_railing, GEN_OT_new_ladder]
+classes = [GENCHARTS_PT_main_panel, GEN_OT_new_truss, GEN_OT_new_railing, GEN_OT_new_ladder, GEN_OT_update_railing]
  
 preview_collections = {}
  
