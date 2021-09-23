@@ -235,12 +235,15 @@ def createRailing(context,
         ob.location[0],
         ob.location[1],
         ob.location[2] + height/2)
-    if context.mode == 'OBJECT':
-        bpy.ops.object.editmode_toggle()
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.object.skin_root_mark()
-    if context.mode == 'EDIT_MESH':
-        bpy.ops.object.editmode_toggle()
+
+    # RESET SKIN ROOTS
+    resetAllSkinRoots(context) 
+    # if context.mode == 'OBJECT':
+    #     bpy.ops.object.editmode_toggle()
+    # bpy.ops.mesh.select_all(action='SELECT')
+    # bpy.ops.object.skin_root_mark()
+    # if context.mode == 'EDIT_MESH':
+    #     bpy.ops.object.editmode_toggle()
 
     ob['genRailingHeight'] = height
     ob['genRailingRef'] = height
@@ -254,6 +257,15 @@ def createRailing(context,
     #if (edit mode and edge selected):
         
     return (ob)
+
+def resetAllSkinRoots(context):
+    if context.mode == 'OBJECT':
+        bpy.ops.object.editmode_toggle()
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.object.skin_root_mark()
+    if context.mode == 'EDIT_MESH':
+        bpy.ops.object.editmode_toggle()
+    return {'FINISHED'}
 
 
 #÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
@@ -288,6 +300,7 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
         if context.active_object:
             try:
                 layout.prop(ob.modifiers['trussWireframe'], "thickness", text="Beam thickness")
+                layout.operator( "gen.myop_resetskinroots", text="click me if the effect breaks")
             except:
                 layout.operator("gen.myop_convert2truss", icon_value=truss_icon.icon_id)
             
@@ -305,6 +318,7 @@ class GENCHARTS_PT_main_panel(bpy.types.Panel):
                 row = layout.row()  
                 row.prop(ob, '["genRailingHeight"]', text="Height")
                 row.operator( "gen.myop_updaterailing", text=">> update")
+                
         except:
             layout.operator( "gen.myop_createrailing", icon_value=railing_icon.icon_id)
             print("no deco :-(")
@@ -385,6 +399,16 @@ class GEN_OT_new_ladder(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class GEN_OT_reset_skin_roots(bpy.types.Operator):
+    """Adds a parametric ladder. Early alpha stage."""
+    bl_label = "Reset roots)"
+    bl_idname = "gen.myop_resetskinroots"
+    
+    def execute(self, context):
+        resetAllSkinRoots(context)
+        
+        return {'FINISHED'}
+
 
 #÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                                                    REGISTER
@@ -395,7 +419,8 @@ classes = [
             GEN_OT_new_railing,
             GEN_OT_new_ladder,
             GEN_OT_update_railing,
-            GEN_OT_convert_to_truss
+            GEN_OT_convert_to_truss,
+            GEN_OT_reset_skin_roots
             ]
  
 preview_collections = {}
